@@ -43,10 +43,8 @@ export default function Contact() {
 
   const onSubmit = async (v: FormValues) => {
     setSubmitting(true);
-    const { error } = await supabase.from("inquiries").insert({
-      ...v,
-      user_id: user?.id ?? null,
-    });
+    const payload: any = { ...v, user_id: user?.id ?? null };
+    const { error } = await supabase.from("inquiries").insert(payload);
     setSubmitting(false);
     if (error) {
       toast.error("Something went wrong. Please try again.");

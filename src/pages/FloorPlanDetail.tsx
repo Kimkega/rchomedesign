@@ -15,7 +15,7 @@ export default function FloorPlanDetail() {
   if (isLoading) return <div className="container py-24 text-center text-muted-foreground">Loading…</div>;
   if (!plan) return <div className="container py-24 text-center">Plan not found.</div>;
 
-  const images: string[] = Array.isArray(plan.images) ? plan.images : [];
+  const images: string[] = Array.isArray(plan.images) ? (plan.images as unknown[]).filter((x): x is string => typeof x === "string") : [];
 
   return (
     <div className="container py-16">
