@@ -351,13 +351,14 @@ export function AdminBlog() {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["adm_posts"], queryFn: async () => (await supabase.from("blog_posts").select("*").order("created_at", { ascending: false })).data ?? [] });
   const [editing, setEditing] = useState<any>(null);
-  const empty = { slug: "", title: "", excerpt: "", body: "", cover_image_url: "", published: false, published_at: null };
+  const empty = { slug: "", title: "", excerpt: "", body: "", cover_image_url: "", published: false, published_at: null as string | null, scheduled_publish_at: null as string | null };
   const e = editing ?? empty;
 
   const save = async () => {
     try {
       const payload: any = { ...e };
-      if (payload.published && !payload.published_at) payload.published_at = new Date().toISOString();
+      if (payload.scheduled_publish_at === "") payload.scheduled_publish_at = null;
+      if (payload.published && !payload.published_at) payload.published_at = payload.scheduled_publish_at || new Date().toISOString();
       if (payload.id) await supabase.from("blog_posts").update(payload).eq("id", payload.id);
       else await supabase.from("blog_posts").insert(payload);
       toast.success("Saved"); setEditing(null); qc.invalidateQueries({ queryKey: ["adm_posts"] });
@@ -368,12 +369,12 @@ export function AdminBlog() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-4xl">Blog</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-3xl md:text-4xl">Blog</h1>
         <Button onClick={() => setEditing(empty)} className="bg-gradient-gold text-primary-foreground">New post</Button>
       </div>
       {editing && (
-        <Card className="space-y-4 p-6">
+        <Card className="space-y-4 p-5 md:p-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <div><Label>Title</Label><Input value={e.title} onChange={(ev) => setEditing({ ...e, title: ev.target.value })} /></div>
             <div><Label>Slug</Label><Input value={e.slug} onChange={(ev) => setEditing({ ...e, slug: ev.target.value })} /></div>
@@ -382,13 +383,21 @@ export function AdminBlog() {
           <div><Label>Body</Label><Textarea rows={10} value={e.body ?? ""} onChange={(ev) => setEditing({ ...e, body: ev.target.value })} /></div>
           <div>
             <Label>Cover</Label>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {e.cover_image_url && <img src={e.cover_image_url} className="h-16 w-16 rounded object-cover" alt="" />}
-              <Input type="file" accept="image/*" onChange={(ev) => ev.target.files?.[0] && handleCover(ev.target.files[0])} />
+              <Input type="file" accept="image/*" onChange={(ev) => ev.target.files?.[0] && handleCover(ev.target.files[0])} className="max-w-xs" />
+              <Input placeholder="…or paste cover URL" value={e.cover_image_url ?? ""} onChange={(ev) => setEditing({ ...e, cover_image_url: ev.target.value })} />
             </div>
           </div>
-          <div className="flex items-center gap-3"><Switch checked={!!e.published} onCheckedChange={(v) => setEditing({ ...e, published: v })} /><Label>Published</Label></div>
-          <div className="flex gap-2">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex items-center gap-3"><Switch checked={!!e.published} onCheckedChange={(v) => setEditing({ ...e, published: v })} /><Label>Published (active)</Label></div>
+            <div>
+              <Label>Schedule publish at (optional)</Label>
+              <Input type="datetime-local" value={toLocalInput(e.scheduled_publish_at)} onChange={(ev) => setEditing({ ...e, scheduled_publish_at: ev.target.value ? new Date(ev.target.value).toISOString() : null })} />
+              <p className="mt-1 text-[11px] text-muted-foreground">Toggle Published ON and set a future date to schedule.</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <Button onClick={save} className="bg-gradient-gold text-primary-foreground">Save</Button>
             <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
           </div>
@@ -447,22 +456,49 @@ export function AdminTestimonials() {
 export function AdminFAQ() {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["adm_faq"], queryFn: async () => (await supabase.from("faq_items").select("*").order("sort_order")).data ?? [] });
-  const [e, setE] = useState({ question: "", answer: "" });
-  const add = async () => { try { await supabase.from("faq_items").insert(e); setE({ question: "", answer: "" }); qc.invalidateQueries({ queryKey: ["adm_faq"] }); toast.success("Added"); } catch (err: any) { toast.error(err.message); } };
+  const [e, setE] = useState<any>({ question: "", answer: "", published: true, scheduled_publish_at: null as string | null });
+  const add = async () => {
+    try {
+      const payload: any = { ...e };
+      if (payload.scheduled_publish_at === "") payload.scheduled_publish_at = null;
+      await supabase.from("faq_items").insert(payload);
+      setE({ question: "", answer: "", published: true, scheduled_publish_at: null });
+      qc.invalidateQueries({ queryKey: ["adm_faq"] });
+      toast.success("Added");
+    } catch (err: any) { toast.error(err.message); }
+  };
+  const togglePub = async (id: string, published: boolean) => {
+    await supabase.from("faq_items").update({ published }).eq("id", id);
+    qc.invalidateQueries({ queryKey: ["adm_faq"] });
+  };
   const del = async (id: string) => { await supabase.from("faq_items").delete().eq("id", id); qc.invalidateQueries({ queryKey: ["adm_faq"] }); };
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-4xl">FAQ</h1>
-      <Card className="space-y-4 p-6">
+      <h1 className="font-display text-3xl md:text-4xl">FAQ</h1>
+      <Card className="space-y-4 p-5 md:p-6">
         <div><Label>Question</Label><Input value={e.question} onChange={(ev) => setE({ ...e, question: ev.target.value })} /></div>
         <div><Label>Answer</Label><Textarea value={e.answer} onChange={(ev) => setE({ ...e, answer: ev.target.value })} /></div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex items-center gap-3"><Switch checked={!!e.published} onCheckedChange={(v) => setE({ ...e, published: v })} /><Label>Active</Label></div>
+          <div>
+            <Label>Schedule publish at (optional)</Label>
+            <Input type="datetime-local" value={toLocalInput(e.scheduled_publish_at)} onChange={(ev) => setE({ ...e, scheduled_publish_at: ev.target.value ? new Date(ev.target.value).toISOString() : null })} />
+          </div>
+        </div>
         <Button onClick={add} className="bg-gradient-gold text-primary-foreground">Add</Button>
       </Card>
       <div className="space-y-2">
         {data?.map((f) => (
-          <Card key={f.id} className="flex items-start justify-between p-4">
-            <div><p className="font-medium">{f.question}</p><p className="mt-1 text-sm text-muted-foreground">{f.answer}</p></div>
-            <Button size="sm" variant="destructive" onClick={() => del(f.id)}>Delete</Button>
+          <Card key={f.id} className="flex flex-wrap items-start justify-between gap-3 p-4">
+            <div className="min-w-0 flex-1">
+              <p className="font-medium">{f.question}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{f.answer}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{f.published ? (f.scheduled_publish_at && new Date(f.scheduled_publish_at) > new Date() ? `Scheduled ${new Date(f.scheduled_publish_at).toLocaleString()}` : "Active") : "Draft"}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={!!f.published} onCheckedChange={(v) => togglePub(f.id, v)} />
+              <Button size="sm" variant="destructive" onClick={() => del(f.id)}>Delete</Button>
+            </div>
           </Card>
         ))}
       </div>
