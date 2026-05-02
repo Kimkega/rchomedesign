@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,15 +11,17 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const [params] = useSearchParams();
+  const redirect = params.get("redirect") || "/dashboard";
+  const { user, isStaff } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) navigate("/dashboard");
-  }, [user, navigate]);
+    if (user) navigate(redirect === "/dashboard" && isStaff ? "/admin" : redirect);
+  }, [user, isStaff, navigate, redirect]);
 
   const signIn = async () => {
     setLoading(true);
@@ -27,7 +29,6 @@ export default function Auth() {
     setLoading(false);
     if (error) return toast.error(error.message);
     toast.success("Welcome back!");
-    navigate("/dashboard");
   };
 
   const signUp = async () => {
@@ -35,14 +36,13 @@ export default function Auth() {
     const { error } = await supabase.auth.signUp({
       email, password,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: `${window.location.origin}${redirect}`,
         data: { full_name: name },
       },
     });
     setLoading(false);
     if (error) return toast.error(error.message);
     toast.success("Account created — you're signed in.");
-    navigate("/dashboard");
   };
 
   return (
