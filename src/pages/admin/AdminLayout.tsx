@@ -23,8 +23,17 @@ const items = [
 
 export default function AdminLayout() {
   const { user, isStaff, isAdmin, loading, signOut } = useAuth();
-  if (loading) return <div className="flex h-screen items-center justify-center text-muted-foreground">Loading…</div>;
-  if (!user) return <Navigate to="/auth" replace />;
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <span className="text-sm">Loading admin…</span>
+        </div>
+      </div>
+    );
+  }
+  if (!user) return <Navigate to="/auth?redirect=/admin" replace />;
   if (!isStaff) return <Navigate to="/dashboard" replace />;
 
   const visible = items.filter((i) => !i.adminOnly || isAdmin);
