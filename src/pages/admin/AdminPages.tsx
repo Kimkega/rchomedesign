@@ -150,6 +150,8 @@ export function AdminGallery() {
   const { data: imgs } = useQuery({ queryKey: ["adm_imgs"], queryFn: async () => (await supabase.from("gallery_images").select("*").order("created_at", { ascending: false })).data ?? [] });
   const [catId, setCatId] = useState<string>("");
   const [caption, setCaption] = useState("");
+  const [externalUrl, setExternalUrl] = useState("");
+  const [newCat, setNewCat] = useState("");
 
   const upload = async (files: FileList) => {
     try {
@@ -160,12 +162,37 @@ export function AdminGallery() {
       toast.success("Uploaded"); qc.invalidateQueries({ queryKey: ["adm_imgs"] });
     } catch (e: any) { toast.error(e.message); }
   };
+  const addByUrl = async () => {
+    if (!externalUrl) return;
+    try {
+      await supabase.from("gallery_images").insert({ image_url: externalUrl, caption: caption || null, category_id: catId || null, source_url: externalUrl });
+      setExternalUrl(""); toast.success("Added"); qc.invalidateQueries({ queryKey: ["adm_imgs"] });
+    } catch (e: any) { toast.error(e.message); }
+  };
+  const addCategory = async () => {
+    if (!newCat) return;
+    const slug = newCat.toLowerCase().replace(/\s+/g, "-");
+    await supabase.from("gallery_categories").insert({ name: newCat, slug });
+    setNewCat(""); qc.invalidateQueries({ queryKey: ["adm_cats"] }); toast.success("Category added");
+  };
   const del = async (id: string) => { await supabase.from("gallery_images").delete().eq("id", id); qc.invalidateQueries({ queryKey: ["adm_imgs"] }); };
 
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-4xl">Gallery</h1>
-      <Card className="space-y-4 p-6">
+      <h1 className="font-display text-3xl md:text-4xl">Gallery</h1>
+
+      <Card className="space-y-3 p-5">
+        <h2 className="font-display text-xl">Categories</h2>
+        <div className="flex flex-wrap gap-2">
+          {cats?.map((c) => <span key={c.id} className="rounded border border-border px-2 py-1 text-xs">{c.name}</span>)}
+        </div>
+        <div className="flex gap-2">
+          <Input placeholder="New category name" value={newCat} onChange={(e) => setNewCat(e.target.value)} />
+          <Button onClick={addCategory} variant="outline">Add</Button>
+        </div>
+      </Card>
+
+      <Card className="space-y-4 p-5">
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <Label>Category</Label>
@@ -176,12 +203,22 @@ export function AdminGallery() {
           </div>
           <div className="sm:col-span-2"><Label>Caption (optional, applied to all)</Label><Input value={caption} onChange={(e) => setCaption(e.target.value)} /></div>
         </div>
-        <div><Label>Upload images</Label><Input type="file" accept="image/*" multiple onChange={(e) => e.target.files && upload(e.target.files)} /></div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div><Label>Upload images</Label><Input type="file" accept="image/*" multiple onChange={(e) => e.target.files && upload(e.target.files)} /></div>
+          <div>
+            <Label>…or add by image URL</Label>
+            <div className="flex gap-2">
+              <Input placeholder="https://…" value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)} />
+              <Button onClick={addByUrl} variant="outline">Add</Button>
+            </div>
+          </div>
+        </div>
       </Card>
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
         {imgs?.map((i) => (
           <div key={i.id} className="group relative aspect-square overflow-hidden rounded-lg bg-secondary">
-            <img src={i.image_url} alt="" className="h-full w-full object-cover" />
+            <img src={i.image_url} alt={i.alt_text || ""} className="h-full w-full object-cover" />
             <button onClick={() => del(i.id)} className="absolute right-2 top-2 rounded bg-destructive px-2 py-1 text-xs text-destructive-foreground opacity-0 transition group-hover:opacity-100">Delete</button>
           </div>
         ))}
