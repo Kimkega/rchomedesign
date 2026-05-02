@@ -108,8 +108,10 @@ export type Database = {
           created_at: string
           excerpt: string | null
           id: string
+          images: Json
           published: boolean
           published_at: string | null
+          scheduled_publish_at: string | null
           slug: string
           tags: string[] | null
           title: string
@@ -122,8 +124,10 @@ export type Database = {
           created_at?: string
           excerpt?: string | null
           id?: string
+          images?: Json
           published?: boolean
           published_at?: string | null
+          scheduled_publish_at?: string | null
           slug: string
           tags?: string[] | null
           title: string
@@ -136,8 +140,10 @@ export type Database = {
           created_at?: string
           excerpt?: string | null
           id?: string
+          images?: Json
           published?: boolean
           published_at?: string | null
+          scheduled_publish_at?: string | null
           slug?: string
           tags?: string[] | null
           title?: string
@@ -150,21 +156,27 @@ export type Database = {
           answer: string
           created_at: string
           id: string
+          published: boolean
           question: string
+          scheduled_publish_at: string | null
           sort_order: number
         }
         Insert: {
           answer: string
           created_at?: string
           id?: string
+          published?: boolean
           question: string
+          scheduled_publish_at?: string | null
           sort_order?: number
         }
         Update: {
           answer?: string
           created_at?: string
           id?: string
+          published?: boolean
           question?: string
+          scheduled_publish_at?: string | null
           sort_order?: number
         }
         Relationships: []
@@ -177,12 +189,14 @@ export type Database = {
           cover_image_url: string | null
           created_at: string
           description: string | null
+          external_url: string | null
           id: string
           images: Json
           name: string
           pdf_url: string | null
           price: number | null
           published: boolean
+          scheduled_publish_at: string | null
           slug: string
           sort_order: number
           sqft: number | null
@@ -196,12 +210,14 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
+          external_url?: string | null
           id?: string
           images?: Json
           name: string
           pdf_url?: string | null
           price?: number | null
           published?: boolean
+          scheduled_publish_at?: string | null
           slug: string
           sort_order?: number
           sqft?: number | null
@@ -215,12 +231,14 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
+          external_url?: string | null
           id?: string
           images?: Json
           name?: string
           pdf_url?: string | null
           price?: number | null
           published?: boolean
+          scheduled_publish_at?: string | null
           slug?: string
           sort_order?: number
           sqft?: number | null
@@ -255,6 +273,7 @@ export type Database = {
       }
       gallery_images: {
         Row: {
+          alt_text: string | null
           caption: string | null
           category_id: string | null
           created_at: string
@@ -262,9 +281,11 @@ export type Database = {
           id: string
           image_url: string
           sort_order: number
+          source_url: string | null
           title: string | null
         }
         Insert: {
+          alt_text?: string | null
           caption?: string | null
           category_id?: string | null
           created_at?: string
@@ -272,9 +293,11 @@ export type Database = {
           id?: string
           image_url: string
           sort_order?: number
+          source_url?: string | null
           title?: string | null
         }
         Update: {
+          alt_text?: string | null
           caption?: string | null
           category_id?: string | null
           created_at?: string
@@ -282,6 +305,7 @@ export type Database = {
           id?: string
           image_url?: string
           sort_order?: number
+          source_url?: string | null
           title?: string | null
         }
         Relationships: [
