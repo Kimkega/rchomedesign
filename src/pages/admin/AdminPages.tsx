@@ -227,17 +227,36 @@ export function AdminGallery() {
   );
 }
 
+function toLocalInput(iso: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
+}
+
+function UrlAdder({ onAdd, placeholder = "…or paste image URL" }: { onAdd: (url: string) => void; placeholder?: string }) {
+  const [u, setU] = useState("");
+  return (
+    <div className="flex gap-2">
+      <Input placeholder={placeholder} value={u} onChange={(e) => setU(e.target.value)} />
+      <Button variant="outline" onClick={() => { if (u) { onAdd(u); setU(""); } }}>Add URL</Button>
+    </div>
+  );
+}
+
 export function AdminFloorPlans() {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["adm_plans"], queryFn: async () => (await supabase.from("floor_plans").select("*").order("sort_order")).data ?? [] });
   const [editing, setEditing] = useState<any>(null);
 
-  const empty = { slug: "", name: "", tagline: "", description: "", sqft: 0, beds: 0, baths: 0, category: "", cover_image_url: "", published: true };
+  const empty = { slug: "", name: "", tagline: "", description: "", sqft: 0, beds: 0, baths: 0, category: "", cover_image_url: "", images: [] as string[], external_url: "", published: true, scheduled_publish_at: null as string | null };
   const e = editing ?? empty;
+  const imgs: string[] = Array.isArray(e.images) ? e.images : [];
 
   const save = async () => {
     try {
       const payload: any = { ...e };
+      if (payload.scheduled_publish_at === "") payload.scheduled_publish_at = null;
       if (payload.id) { await supabase.from("floor_plans").update(payload).eq("id", payload.id); }
       else { await supabase.from("floor_plans").insert(payload); }
       toast.success("Saved"); setEditing(null); qc.invalidateQueries({ queryKey: ["adm_plans"] });
@@ -245,15 +264,21 @@ export function AdminFloorPlans() {
   };
   const del = async (id: string) => { await supabase.from("floor_plans").delete().eq("id", id); qc.invalidateQueries({ queryKey: ["adm_plans"] }); };
   const handleCover = async (f: File) => { const url = await uploadFile("floor-plans", f); setEditing({ ...e, cover_image_url: url }); };
+  const handleGallery = async (files: FileList) => {
+    const urls: string[] = [];
+    for (const f of Array.from(files)) urls.push(await uploadFile("floor-plans", f));
+    setEditing({ ...e, images: [...imgs, ...urls] });
+  };
+  const removeImg = (i: number) => setEditing({ ...e, images: imgs.filter((_, idx) => idx !== i) });
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-4xl">Floor Plans</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-3xl md:text-4xl">Floor Plans</h1>
         <Button onClick={() => setEditing(empty)} className="bg-gradient-gold text-primary-foreground">New plan</Button>
       </div>
       {editing && (
-        <Card className="space-y-4 p-6">
+        <Card className="space-y-4 p-5 md:p-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <div><Label>Name</Label><Input value={e.name} onChange={(ev) => setEditing({ ...e, name: ev.target.value })} /></div>
             <div><Label>Slug</Label><Input value={e.slug} onChange={(ev) => setEditing({ ...e, slug: ev.target.value })} /></div>
@@ -262,17 +287,40 @@ export function AdminFloorPlans() {
             <div><Label>Sqft</Label><Input type="number" value={e.sqft ?? 0} onChange={(ev) => setEditing({ ...e, sqft: +ev.target.value })} /></div>
             <div><Label>Beds</Label><Input type="number" value={e.beds ?? 0} onChange={(ev) => setEditing({ ...e, beds: +ev.target.value })} /></div>
             <div><Label>Baths</Label><Input type="number" step="0.5" value={e.baths ?? 0} onChange={(ev) => setEditing({ ...e, baths: +ev.target.value })} /></div>
-            <div className="flex items-center gap-3 pt-6"><Switch checked={!!e.published} onCheckedChange={(v) => setEditing({ ...e, published: v })} /><Label>Published</Label></div>
+            <div><Label>External link (optional)</Label><Input placeholder="https://…" value={e.external_url ?? ""} onChange={(ev) => setEditing({ ...e, external_url: ev.target.value })} /></div>
           </div>
           <div><Label>Description</Label><Textarea rows={4} value={e.description ?? ""} onChange={(ev) => setEditing({ ...e, description: ev.target.value })} /></div>
           <div>
             <Label>Cover image</Label>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {e.cover_image_url && <img src={e.cover_image_url} className="h-16 w-16 rounded object-cover" alt="" />}
-              <Input type="file" accept="image/*" onChange={(ev) => ev.target.files?.[0] && handleCover(ev.target.files[0])} />
+              <Input type="file" accept="image/*" onChange={(ev) => ev.target.files?.[0] && handleCover(ev.target.files[0])} className="max-w-xs" />
+              <Input placeholder="…or paste cover URL" value={e.cover_image_url ?? ""} onChange={(ev) => setEditing({ ...e, cover_image_url: ev.target.value })} />
             </div>
           </div>
-          <div className="flex gap-2">
+          <div>
+            <Label>Gallery images</Label>
+            <div className="mb-2 flex flex-wrap gap-2">
+              {imgs.map((u, i) => (
+                <div key={i} className="relative">
+                  <img src={u} className="h-16 w-16 rounded object-cover" alt="" />
+                  <button onClick={() => removeImg(i)} className="absolute -right-1 -top-1 rounded-full bg-destructive px-1.5 text-xs text-destructive-foreground">×</button>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Input type="file" accept="image/*" multiple onChange={(ev) => ev.target.files && handleGallery(ev.target.files)} className="max-w-xs" />
+              <UrlAdder onAdd={(u) => setEditing({ ...e, images: [...imgs, u] })} />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex items-center gap-3"><Switch checked={!!e.published} onCheckedChange={(v) => setEditing({ ...e, published: v })} /><Label>Published</Label></div>
+            <div>
+              <Label>Schedule publish at (optional)</Label>
+              <Input type="datetime-local" value={toLocalInput(e.scheduled_publish_at)} onChange={(ev) => setEditing({ ...e, scheduled_publish_at: ev.target.value ? new Date(ev.target.value).toISOString() : null })} />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <Button onClick={save} className="bg-gradient-gold text-primary-foreground">Save</Button>
             <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
           </div>
@@ -280,12 +328,12 @@ export function AdminFloorPlans() {
       )}
       <div className="space-y-2">
         {data?.map((p) => (
-          <Card key={p.id} className="flex items-center justify-between p-4">
+          <Card key={p.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
             <div className="flex items-center gap-3">
               {p.cover_image_url && <img src={p.cover_image_url} className="h-12 w-12 rounded object-cover" alt="" />}
               <div>
                 <p className="font-medium">{p.name}</p>
-                <p className="text-xs text-muted-foreground">/{p.slug} · {p.sqft} sqft · {p.published ? "Published" : "Draft"}</p>
+                <p className="text-xs text-muted-foreground">/{p.slug} · {p.sqft} sqft · {p.published ? (p.scheduled_publish_at && new Date(p.scheduled_publish_at) > new Date() ? `Scheduled ${new Date(p.scheduled_publish_at).toLocaleString()}` : "Published") : "Draft"}</p>
               </div>
             </div>
             <div className="flex gap-2">
