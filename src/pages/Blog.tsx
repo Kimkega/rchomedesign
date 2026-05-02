@@ -7,8 +7,16 @@ import { format } from "date-fns";
 export default function Blog() {
   const { data: posts } = useQuery({
     queryKey: ["blog_posts_public"],
-    queryFn: async () =>
-      (await supabase.from("blog_posts").select("*").eq("published", true).order("published_at", { ascending: false })).data ?? [],
+    queryFn: async () => {
+      const nowIso = new Date().toISOString();
+      const { data } = await supabase
+        .from("blog_posts")
+        .select("*")
+        .eq("published", true)
+        .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
+        .order("published_at", { ascending: false });
+      return data ?? [];
+    },
   });
 
   return (

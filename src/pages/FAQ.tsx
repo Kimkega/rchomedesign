@@ -5,7 +5,16 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 export default function FAQ() {
   const { data } = useQuery({
     queryKey: ["faq"],
-    queryFn: async () => (await supabase.from("faq_items").select("*").order("sort_order")).data ?? [],
+    queryFn: async () => {
+      const nowIso = new Date().toISOString();
+      const { data } = await supabase
+        .from("faq_items")
+        .select("*")
+        .eq("published", true)
+        .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
+        .order("sort_order");
+      return data ?? [];
+    },
   });
 
   return (
