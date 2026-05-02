@@ -8,8 +8,16 @@ import { Button } from "@/components/ui/button";
 export default function Boutique() {
   const { data: plans } = useQuery({
     queryKey: ["floor_plans_public"],
-    queryFn: async () =>
-      (await supabase.from("floor_plans").select("*").eq("published", true).order("sort_order")).data ?? [],
+    queryFn: async () => {
+      const nowIso = new Date().toISOString();
+      const { data } = await supabase
+        .from("floor_plans")
+        .select("*")
+        .eq("published", true)
+        .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
+        .order("sort_order");
+      return data ?? [];
+    },
   });
 
   return (

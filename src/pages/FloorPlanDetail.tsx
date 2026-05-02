@@ -64,6 +64,11 @@ export default function FloorPlanDetail() {
                 <a href={plan.pdf_url} target="_blank" rel="noopener noreferrer">Download PDF</a>
               </Button>
             )}
+            {(plan as any).external_url && (
+              <Button asChild variant="outline" size="lg">
+                <a href={(plan as any).external_url} target="_blank" rel="noopener noreferrer">View details ↗</a>
+              </Button>
+            )}
           </div>
         </div>
       </div>

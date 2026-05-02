@@ -9,6 +9,15 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rolesLoading, setRolesLoading] = useState(true);
+
+  const fetchRoles = async (uid: string) => {
+    setRolesLoading(true);
+    const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+    if (error) console.error("[useAuth] fetchRoles error:", error);
+    setRoles((data?.map((r) => r.role) ?? []) as AppRole[]);
+    setRolesLoading(false);
+  };
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
@@ -18,21 +27,21 @@ export function useAuth() {
         setTimeout(() => fetchRoles(s.user.id), 0);
       } else {
         setRoles([]);
+        setRolesLoading(false);
       }
     });
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      if (data.session?.user) fetchRoles(data.session.user.id);
+      if (data.session?.user) {
+        fetchRoles(data.session.user.id);
+      } else {
+        setRolesLoading(false);
+      }
       setLoading(false);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
-
-  const fetchRoles = async (uid: string) => {
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
-    setRoles((data?.map((r) => r.role) ?? []) as AppRole[]);
-  };
 
   const isAdmin = roles.includes("admin");
   const isDesigner = roles.includes("designer");
@@ -42,5 +51,5 @@ export function useAuth() {
     await supabase.auth.signOut();
   };
 
-  return { session, user, roles, isAdmin, isDesigner, isStaff, loading, signOut };
+  return { session, user, roles, isAdmin, isDesigner, isStaff, loading: loading || rolesLoading, signOut };
 }

@@ -28,15 +28,17 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-xl">
       <nav className="container flex h-16 items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-3">
+        <Link to="/" className="flex min-w-0 items-center gap-2.5 sm:gap-3">
           {branding?.logo_url ? (
-            <img src={branding.logo_url} alt={branding.site_name} className="h-9 w-9 rounded-md object-cover" />
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-card sm:h-10 sm:w-10">
+              <img src={branding.logo_url} alt={branding.site_name} className="h-full w-full object-contain p-0.5" />
+            </span>
           ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gradient-gold font-display text-lg text-primary-foreground">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gradient-gold font-display text-lg text-primary-foreground sm:h-10 sm:w-10">
               R
             </div>
           )}
-          <span className="font-display text-xl tracking-wide">{branding?.site_name ?? "RC Home Design"}</span>
+          <span className="truncate font-display text-base tracking-wide sm:text-lg md:text-xl">{branding?.site_name ?? "RC Home Design"}</span>
         </Link>
 
         <ul className="hidden items-center gap-7 lg:flex">
